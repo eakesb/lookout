@@ -45,8 +45,7 @@ public class Main {
 
         executorService = Executors.newSingleThreadScheduledExecutor();
         sites = ImmutableList.of(
-                "75097/146537",
-                "131440/403270"
+                "Clear Lake/75097/146537"
         );
     }
 
@@ -67,15 +66,13 @@ public class Main {
     private void run() {
         for (String site : sites) {
             List<String> ids = Splitter.on("/").splitToList(site);
-            Optional<String> available = checkAvailability(ids.get(0), ids.get(1));
+            Optional<String> available = checkAvailability(ids.get(0), ids.get(1), ids.get(2));
             available.ifPresent(this::sendEmail);
         }
     }
 
     private void sendEmail(String message) {
         try {
-            log.info(message);
-            log.info("Sending Email to : " + recipients);
 
             SendEmailRequest request = new SendEmailRequest()
                     .withDestination(new Destination().withBccAddresses(recipients))
@@ -90,14 +87,16 @@ public class Main {
                     .withSource(sender);
 
             SendEmailResult result = sesClient.sendEmail(request);
-            log.info(result.getMessageId());
 
+            log.info("Sent Email: " + result.getMessageId());
         } catch (Exception e) {
             log.error("Failed to send email", e);
         }
     }
 
-    private Optional<String> checkAvailability(String parkId, String siteId) {
+    private Optional<String> checkAvailability(String lookout, String parkId, String siteId) {
+
+        log.info("Checking " + lookout);
 
         DateTime now = DateTime.now();
 
@@ -115,6 +114,7 @@ public class Main {
                 .findAny();
 
         if (notAvailable.isPresent()) {
+            log.info(lookout + " not available");
             return Optional.empty();
         }
 
@@ -129,9 +129,11 @@ public class Main {
         DateTime dateTime = DateTime.parse(month + " " + day, DateTimeFormat.forPattern("MMM YYYY dd"));
 
         if (dateTime.getMonthOfYear() >= 6) {
+            log.info(lookout + " not available before June");
             return Optional.empty();
         }
 
+        log.info(lookout + " IS AVAILABLE: " + dateTime.toString());
         return Optional.of(dateTime.toString());
     }
 
